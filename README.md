@@ -11,6 +11,7 @@ This repository focuses on the execution layer: broker adapters, dry-run/live-or
 - `auto-trading/docs`: Public architecture, safety, and adapter contracts.
 - `auto-trading/examples`: Small mock CSV inputs for local experimentation.
 - `obsidian-shioaji-vault`: Sanitized full Obsidian note package for the Shioaji execution system.
+- `portfolio`: Interview-oriented project history, engineering blueprint, design decisions, and talking points.
 
 ## What is excluded
 
@@ -40,3 +41,7 @@ The system is deliberately split into two sides:
 - Public execution framework: consumes sanitized final lists or mock inputs and turns them into validated trading workflows.
 
 That separation is the main design point: it allows the execution framework to be reviewed without exposing proprietary selection rules or sensitive account data.
+
+## Portfolio Reading Path
+
+Start with [`portfolio/README.md`](portfolio/README.md) for the interview walkthrough, then read the project history and engineering blueprint. The Obsidian vault is included as sanitized operating memory, while `portfolio/` is the curated narrative layer.

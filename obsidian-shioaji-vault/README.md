@@ -12,3 +12,5 @@ Sensitive material is intentionally removed or generalized:
 - Raw live-trading data, private reports, databases, logs, and certificate files.
 
 The public boundary is the execution system: order planning, risk gates, broker reconciliation, workflow status, and operator documentation.
+
+For a curated interview walkthrough, start from `../portfolio/README.md`.

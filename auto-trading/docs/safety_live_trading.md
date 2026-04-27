@@ -59,7 +59,7 @@ Live automation guardrail:
 Sell policy summary:
 
 - The live exit decision is basket-first: when the whole basket exits, every strategy position in that basket is prepared for sell submission.
-- Basket conservative profit is computed after conservative sell-price discounting, sell fee, and sell tax.
+- Basket conservative profit is computed after conservative exit-price discounting, sell fee, and sell tax.
 - Basket conservative profit must be greater than `max(total_buy_cost * 0.008, 3000)`.
 - If basket conservative profit is negative, zero, or below that threshold, the basket recommendation is `hold` and no position is submitted.
 - Individual stock sell signals remain in `can_sell_flag` for review, but they no longer block an all-basket exit once the basket threshold passes.
