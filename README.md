@@ -11,12 +11,14 @@ This repository focuses on the execution layer: broker adapters, dry-run/live-or
 - `auto-trading/docs`: Public architecture, safety, and adapter contracts.
 - `auto-trading/examples`: Small mock CSV inputs for local experimentation.
 - `obsidian-showcase`: A curated Obsidian-style documentation excerpt for model/execution boundaries.
+- `obsidian-shioaji-vault`: Sanitized full Obsidian note package for the Shioaji execution system.
 
 ## What is excluded
 
 - Real `.env` files, API keys, certificate files, and broker credentials.
 - Real live-trading databases, SQLite state, private reports, and order logs.
 - Private upstream stock-selection rules, AB model notes, candidate-pool logic, and daily private model outputs.
+- Raw Obsidian app state such as `.obsidian/workspace.json`.
 
 ## Quick Start
 
