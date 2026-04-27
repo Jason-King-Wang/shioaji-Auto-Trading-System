@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sinopac-auto-trading"
+version = "0.3.0"
+description = "Independent auto-trading execution framework for SinoPac / Shioaji and other broker adapters."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "python-dotenv>=1.0",
+  "PyYAML>=6.0",
+  "shioaji>=1.2",
+  "tzdata>=2024.1",
+]
+
+[project.scripts]
+sinopac-auto = "sinopac_auto_trading.cli:main"

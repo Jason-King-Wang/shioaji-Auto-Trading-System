@@ -1,0 +1,40 @@
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.pfx
+*.pem
+*.key
+*.crt
+
+# Local/live trading data
+data/
+reports/private/
+reports/live/
+reports/real_trades/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+tmp*/
+tests/tmp*/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

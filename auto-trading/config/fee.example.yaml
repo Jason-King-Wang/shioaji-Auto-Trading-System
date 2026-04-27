@@ -1,0 +1,6 @@
+commission_rate: 0.001425
+commission_discount: 1.0
+minimum_commission: 20
+transaction_tax_rate_stock: 0.003
+transaction_tax_rate_day_trade: 0.0015
+other_fee_rules: {}
