@@ -5837,19 +5837,6 @@ def _build_weekly_summary(settings: Settings, trade_date: date) -> dict[str, obj
         {"label": "fallback_day_count", "value": fallback_day_count},
         {"label": "fallback_position_lot_count", "value": fallback_position_lot_count},
     ]
-    sell_model_vs_actual = [
-        {
-            "stock_id": row.get("stock_id", ""),
-            "estimate": row.get("conservative_profit", ""),
-            "actual": row.get("realized_pnl", row.get("actual_fill_avg_price", "")),
-            "error": (
-                _as_float(row.get("realized_pnl")) - _as_float(row.get("conservative_profit"))
-                if row.get("realized_pnl", "") not in ("", None)
-                else ""
-            ),
-        }
-        for row in latest.get("sell_rows", [])
-    ]
     comparison_chart = {
         "x_labels": [row["date"] for row in daily_rows],
         "series": [
@@ -5873,7 +5860,6 @@ def _build_weekly_summary(settings: Settings, trade_date: date) -> dict[str, obj
         "trade_results": trade_results,
         "lot_ledger_rows": lot_ledger_rows,
         "ambiguous_fill_rows": ambiguous_fills,
-        "sell_model_vs_actual": sell_model_vs_actual,
         "expired_unfilled": expired_unfilled,
         "tuning_suggestions": (
             [

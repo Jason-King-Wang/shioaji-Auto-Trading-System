@@ -292,7 +292,6 @@ class ReportWriterTests(unittest.TestCase):
                         "lot_status": "open",
                     }
                 ],
-                "sell_model_vs_actual": [{"stock_id": "2330", "estimate": 500, "actual": 450, "error": -50}],
                 "expired_unfilled": [{"stock_id": "2317", "stop_day": "2026-04-22", "reason": "expired_unfilled"}],
                 "tuning_suggestions": ["keep budget guard"],
                 "comparison_chart": {"x_labels": ["2026-04-20"], "series": [{"label": "Strategy", "values": [0.015]}]},

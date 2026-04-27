@@ -1600,7 +1600,7 @@ def _daily_markdown(report: dict[str, Any]) -> str:
                 ("unrealized_pnl", "未實現損益"),
                 ("unrealized_pnl_pct", "未實現報酬率"),
                 ("estimated_exit_value_after_fee_tax", "預估出場淨額"),
-                ("breakeven_sell_price", "損平賣價"),
+                ("breakeven_sell_price", "損平出場價"),
             ],
             "尚無持倉資料。",
         )
@@ -1660,7 +1660,7 @@ def _daily_markdown(report: dict[str, Any]) -> str:
                 ("stock_id", "股票代號"),
                 ("basket_tag", "Basket"),
                 ("can_sell_flag", "可賣"),
-                ("conservative_sell_price", "保守賣價"),
+                ("conservative_sell_price", "保守出場價"),
                 ("conservative_profit", "保守獲利"),
                 ("sell_decision", "賣出決策"),
                 ("sell_decision_reason", "決策原因"),
@@ -1669,7 +1669,7 @@ def _daily_markdown(report: dict[str, Any]) -> str:
                 ("basket_loser_loss_ratio", "虧損股佔比"),
                 ("quote_timestamp", "報價時間"),
                 ("sell_submission_gate", "提交 Gate"),
-                ("sell_order_price", "委託賣價"),
+                ("sell_order_price", "委託出場價"),
                 ("sell_order_status", "委託狀態"),
                 ("actual_fill_avg_price", "實際成交均價"),
                 ("sold_qty", "已賣"),
@@ -1888,7 +1888,7 @@ def _daily_html(report: dict[str, Any], *, title: str, subtitle: str) -> str:
                         ("stock_id", "股票代號"),
                         ("basket_tag", "Basket"),
                         ("can_sell_flag", "可賣"),
-                        ("conservative_sell_price", "保守賣價"),
+                        ("conservative_sell_price", "保守出場價"),
                         ("conservative_profit", "保守獲利"),
                         ("sell_decision", "賣出決策"),
                         ("sell_decision_reason", "決策原因"),
@@ -1897,7 +1897,7 @@ def _daily_html(report: dict[str, Any], *, title: str, subtitle: str) -> str:
                         ("basket_loser_loss_ratio", "虧損股佔比"),
                         ("quote_timestamp", "報價時間"),
                         ("sell_submission_gate", "提交 Gate"),
-                        ("sell_order_price", "委託賣價"),
+                        ("sell_order_price", "委託出場價"),
                         ("sell_order_status", "委託狀態"),
                         ("actual_fill_avg_price", "實際成交均價"),
                         ("sold_qty", "已賣"),
@@ -2052,14 +2052,6 @@ def _weekly_markdown(summary: dict[str, Any]) -> str:
                 ("lot_status", "lot_status"),
             ],
             "尚無 lot ledger 資料。",
-        )
-    )
-    lines.extend(
-        _render_markdown_section(
-            "賣出模型 vs 實際",
-            summary.get("sell_model_vs_actual", []),
-            [("stock_id", "stock_id"), ("estimate", "estimate"), ("actual", "actual"), ("error", "error")],
-            "尚無賣出模型比較資料。",
         )
     )
     lines.extend(
@@ -2236,17 +2228,6 @@ def _weekly_html(summary: dict[str, Any]) -> str:
                 ],
                 "尚無 lot ledger 資料。",
                 section_id="lot-ledger",
-            ),
-        ),
-        (
-            "sell-model-vs-actual",
-            "賣出模型 vs 實際",
-            _render_table_html(
-                "賣出模型 vs 實際",
-                summary.get("sell_model_vs_actual", []),
-                [("stock_id", "股票"), ("estimate", "估算"), ("actual", "實際"), ("error", "誤差")],
-                "尚無賣出模型比較資料。",
-                section_id="sell-model-vs-actual",
             ),
         ),
         (

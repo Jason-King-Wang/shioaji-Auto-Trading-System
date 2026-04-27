@@ -9,15 +9,15 @@ from sinopac_auto_trading.report_writer import render_daily_report
 from tests.mojibake_guard import assert_text_has_no_known_mojibake
 
 
-class SellModelReportingTests(unittest.TestCase):
+class SellExecutionReportingTests(unittest.TestCase):
     def _case_dir(self, name: str) -> Path:
         path = Path(__file__).resolve().parent / "_tmp" / f"{name}-{uuid.uuid4().hex}"
         path.mkdir(parents=True, exist_ok=True)
         self.addCleanup(lambda: shutil.rmtree(path, ignore_errors=True))
         return path
 
-    def test_daily_report_renders_buy_and_sell_model_gate_columns(self) -> None:
-        temp_dir = self._case_dir("sell-model-report")
+    def test_daily_report_renders_buy_and_sell_execution_gate_columns(self) -> None:
+        temp_dir = self._case_dir("sell-execution-report")
         markdown = temp_dir / "daily.md"
         html = temp_dir / "daily.html"
         render_daily_report(

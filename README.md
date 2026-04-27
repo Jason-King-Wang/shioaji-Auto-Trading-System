@@ -10,7 +10,6 @@ This repository focuses on the execution layer: broker adapters, dry-run/live-or
 - `auto-trading/tests`: Unit tests for workflow safety, selection providers, report rendering, and order loops.
 - `auto-trading/docs`: Public architecture, safety, and adapter contracts.
 - `auto-trading/examples`: Small mock CSV inputs for local experimentation.
-- `obsidian-showcase`: A curated Obsidian-style documentation excerpt for model/execution boundaries.
 - `obsidian-shioaji-vault`: Sanitized full Obsidian note package for the Shioaji execution system.
 
 ## What is excluded
