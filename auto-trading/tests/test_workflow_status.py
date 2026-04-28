@@ -636,10 +636,10 @@ class WorkflowStatusTests(unittest.TestCase):
                 "today_ordering_status": "guarded_time_passed_no_backfill+basket_a_same_day_json_missing_pass",
                 "today_ordering_note": "2330 受保護下單路徑的保護條件問題雖已修好，但今天 09:10 排程時間已過，不會補單。 今天沒有找到同日 A 預選 JSON，所以整包 A 主線安全略過，不回退前一天。",
                 "today_ordering_conflict_status": "same_day_a_source_arrived_after_basket_buy_window_closed",
-                "today_ordering_conflict_note": "同日 A 預選來源在 2026-04-24 才到位，但整包買進迴圈 (buy_loop) 到了最後交易日已不再開新買單；這是上下游規則衝突。",
-                "today_ordering_conflict_resolution_status": "requires_rule_alignment",
-                "today_ordering_conflict_resolution_action": "align_a_source_timing_or_basket_buy_window_rule",
-                "today_ordering_conflict_resolution_note": "要避免重演 2026-04-24 這種情況，需對齊上下游規則。",
+                "today_ordering_conflict_note": "AB 每日預選屬於獨立專案輸出；非買進日的每日預選只作呈現與觀察。",
+                "today_ordering_conflict_resolution_status": "strategy_scope_clarified",
+                "today_ordering_conflict_resolution_action": "no_materialization_required_for_non_buy_day_daily_preselect",
+                "today_ordering_conflict_resolution_note": "永豐自動交易只在每週買進日依已訂版整包建立部位。",
                 "today_new_order_submission_open": False,
                 "today_new_order_submission_status": "no_auto_new_buy_paths_remaining_today",
                 "today_new_order_submission_note": "今天已沒有任何自動新買單路徑可送出；2330 受保護下單路徑與整包買入路徑都已關閉。",
@@ -659,11 +659,11 @@ class WorkflowStatusTests(unittest.TestCase):
         self.assertIn("guarded_time_passed_no_backfill+basket_a_same_day_json_missing_pass", content)
         self.assertIn("受保護下單補跑視窗已關閉 + 整包 A 同日 JSON 缺失並直接略過", content)
         self.assertIn("2330 受保護下單路徑的保護條件問題雖已修好", content)
-        self.assertIn("今日下單衝突狀態", content)
+        self.assertIn("策略範圍狀態", content)
         self.assertIn("same_day_a_source_arrived_after_basket_buy_window_closed", content)
-        self.assertIn("同日 A 來源晚於整包買窗", content)
+        self.assertIn("非買進日每日預選已觀察", content)
         self.assertIn(
-            "衝突處理動作: `align_a_source_timing_or_basket_buy_window_rule (對齊 A 來源時間或 basket 買窗規則)`",
+            "策略範圍處理動作: `no_materialization_required_for_non_buy_day_daily_preselect (非買進日每日預選不需展開成新買單)`",
             content,
         )
         self.assertIn("今日新單送出狀態", content)
@@ -762,17 +762,17 @@ class WorkflowStatusTests(unittest.TestCase):
             )
         self.assertEqual(
             materialization["selection_materialization_status"],
-            "local_materialization_pending_wait_for_next_trade_day",
+            "daily_preselect_observed_no_auto_materialization_required",
         )
         self.assertEqual(
             materialization["selection_materialization_missing_artifacts"],
-            "auto_trade_preselect.csv, auto_trade_final_list.csv, sizing.csv",
+            "",
         )
         self.assertEqual(
             materialization["selection_materialization_next_action"],
-            "wait_for_next_trade_day_same_day_a_then_materialize",
+            "no_materialization_required_for_non_buy_day_daily_preselect",
         )
-        self.assertIn("2026-04-27", materialization["selection_materialization_next_action_note"])
+        self.assertIn("下一個週一買進流程", materialization["selection_materialization_next_action_note"])
 
     def test_normalize_event_message_for_display_translates_historical_messages(self) -> None:
         self.assertEqual(
@@ -1073,36 +1073,23 @@ class WorkflowStatusTests(unittest.TestCase):
         )
         self.assertIn("還沒補齊 preselect / finalize 產物", state["today_ordering_note"])
         self.assertIn("今天是本週最後交易日（2026-04-24）", state["today_ordering_note"])
-        self.assertEqual(
-            state["today_ordering_conflict_status"],
-            "same_day_a_source_arrived_after_basket_buy_window_closed",
-        )
-        self.assertIn("這是上下游規則衝突", state["today_ordering_conflict_note"])
-        self.assertEqual(
-            state["today_ordering_conflict_resolution_status"],
-            "requires_rule_alignment",
-        )
-        self.assertEqual(
-            state["today_ordering_conflict_resolution_action"],
-            "align_a_source_timing_or_basket_buy_window_rule",
-        )
-        self.assertIn("調整整包買窗規則", state["today_ordering_conflict_resolution_note"])
-        self.assertIn("2026-04-27", state["today_ordering_conflict_resolution_note"])
+        self.assertNotIn("today_ordering_conflict_status", state)
+        self.assertNotIn("today_ordering_conflict_resolution_status", state)
         self.assertEqual(state["selection_source_carry_forward_next_trade_day"], "2026-04-27")
-        self.assertIn("2026-04-27 的同日 A 預選檔", state["selection_source_carry_forward_note"])
+        self.assertIn("下一個週一買進流程", state["selection_source_carry_forward_note"])
         self.assertEqual(
             state["selection_materialization_status"],
-            "local_materialization_pending_wait_for_next_trade_day",
+            "daily_preselect_observed_no_auto_materialization_required",
         )
         self.assertEqual(
             state["selection_materialization_missing_artifacts"],
-            "auto_trade_preselect.csv, auto_trade_final_list.csv, sizing.csv",
+            "",
         )
         self.assertEqual(
             state["selection_materialization_next_action"],
-            "wait_for_next_trade_day_same_day_a_then_materialize",
+            "no_materialization_required_for_non_buy_day_daily_preselect",
         )
-        self.assertIn("2026-04-27", state["selection_materialization_next_action_note"])
+        self.assertIn("下一個週一買進流程", state["selection_materialization_next_action_note"])
         state_text = (run_dir / "state.json").read_text(encoding="utf-8")
         assert_text_has_no_known_mojibake(self, state_text)
         assert_text_has_no_legacy_english_status_tokens(self, state_text)

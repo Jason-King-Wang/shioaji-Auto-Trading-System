@@ -174,6 +174,8 @@ STATUS_DISPLAY_LABELS: dict[str, str] = {
     "workflow_status_rendered": "已輸出工作流狀態",
     "buy_window_closed": "買窗已關閉",
     "same_day_a_preselect_loaded": "同日 A 預選已載入",
+    "same_day_a_preselect_loaded_pre_finalize": "同日 A 預選已載入，尚未完成訂版",
+    "same_day_a_preselect_available_pending_materialization": "AB 每日預選已到位，待週一買進流程判斷",
     "same_day_a_preselect_missing_pass": "同日 A 預選缺失並直接 pass",
     "report_only_refresh": "僅重跑報表",
     "materialized_without_buy_loop": "已物化但未進入買進迴圈",
@@ -186,8 +188,9 @@ STATUS_DISPLAY_LABELS: dict[str, str] = {
     "basket_a_loaded": "整包 A 已載入",
     "basket_a_same_day_json_missing_pass": "整包 A 同日 JSON 缺失並直接略過",
     "basket_buy_window_closed_last_trade_day": "整包最後交易日買窗已關閉",
-    "same_day_a_source_arrived_after_basket_buy_window_closed": "同日 A 來源晚於整包買窗",
-    "requires_rule_alignment": "需要對齊規則",
+    "same_day_a_source_arrived_after_basket_buy_window_closed": "非買進日每日預選已觀察",
+    "requires_rule_alignment": "策略範圍已釐清",
+    "strategy_scope_clarified": "策略範圍已釐清",
     "no_auto_new_buy_paths_remaining_today": "今天已無自動新買單路徑",
     "skipped_config_live_disabled": "因設定未開啟真實下單而略過",
     "skipped_weekly_execution_disabled": "因本週執行開關未開啟而略過",
@@ -251,7 +254,8 @@ ACTION_DISPLAY_LABELS: dict[str, str] = {
     "weekly_settlement_current_no_action_required": "週結算已是最新，今天不需額外動作",
     "materialization_current_no_action_required": "本地整包產物已對齊，今天不需額外展開",
     "wait_for_next_trade_day_same_day_a_then_materialize": "等待下一個交易日拿到新的同日 A 預選後再展開",
-    "align_a_source_timing_or_basket_buy_window_rule": "對齊 A 來源時間或 basket 買窗規則",
+    "no_materialization_required_for_non_buy_day_daily_preselect": "非買進日每日預選不需展開成新買單",
+    "align_a_source_timing_or_basket_buy_window_rule": "釐清每日預選與週一買進範圍",
     "enable_live_in_config_before_next_scheduled_run": "下次排程前先啟用 auto_trading.live_enabled",
     "historical_guard_issue_fixed_but_scheduled_time_passed_no_backfill": "保護條件已修好；交易視窗內應補跑",
 }
@@ -1223,13 +1227,13 @@ def _render_cards(report: dict[str, Any]) -> str:
     if _text(overview.get("today_ordering_note", "")):
         cards.append(("今日下單說明", _overview_display_text(overview, "today_ordering_note")))
     if _text(overview.get("today_ordering_conflict_status", "")):
-        cards.append(("今日矛盾狀態", _status_with_display_label(overview.get("today_ordering_conflict_status", ""))))
+        cards.append(("策略範圍狀態", _status_with_display_label(overview.get("today_ordering_conflict_status", ""))))
     if _text(overview.get("today_ordering_conflict_note", "")):
-        cards.append(("今日矛盾說明", _overview_display_text(overview, "today_ordering_conflict_note")))
+        cards.append(("策略範圍說明", _overview_display_text(overview, "today_ordering_conflict_note")))
     if _text(overview.get("today_ordering_conflict_resolution_status", "")):
-        cards.append(("矛盾解法狀態", _status_with_display_label(overview.get("today_ordering_conflict_resolution_status", ""))))
+        cards.append(("策略範圍處理狀態", _status_with_display_label(overview.get("today_ordering_conflict_resolution_status", ""))))
     if _text(overview.get("today_ordering_conflict_resolution_note", "")):
-        cards.append(("矛盾解法說明", _overview_display_text(overview, "today_ordering_conflict_resolution_note")))
+        cards.append(("策略範圍處理說明", _overview_display_text(overview, "today_ordering_conflict_resolution_note")))
     if _text(overview.get("today_new_order_submission_status", "")):
         cards.append(("今日可否新送單", _status_with_display_label(overview.get("today_new_order_submission_status", ""))))
     if _text(overview.get("today_new_order_submission_note", "")):

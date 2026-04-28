@@ -1014,7 +1014,8 @@ def _selection_source_summary_clean(
             "selection_source_last_modified": source_last_modified,
             "selection_source_status": "same_day_a_preselect_available_pending_materialization",
             "selection_source_note": (
-                f"同日 A 預選 JSON 已到位：{source_path_text}；但本地整包還沒補齊預選 / 定稿產物。"
+                f"AB 每日預選 JSON 已到位：{source_path_text}；這是獨立專案的每日輸出，"
+                "是否需要展開為永豐自動交易整包，改由週一買進流程與本地訂版狀態判斷。"
             ),
         }
     return {
@@ -1067,11 +1068,15 @@ def _today_ordering_summary_clean(
     }:
         if trade_date is not None and last_trade_day == trade_date:
             statuses.append("basket_buy_window_closed_last_trade_day")
-            parts.append(f"今天是本週最後交易日（{trade_date.isoformat()}），整包買進迴圈不再開新買單。")
+            parts.append(
+                f"今天是本週最後交易日（{trade_date.isoformat()}），整包買進迴圈不再開新買單；"
+                "AB 每日預選是獨立專案輸出，非買進日是否有新預選不會觸發永豐自動交易補買。"
+            )
         elif trade_date is not None and buy_cutoff_day is not None and trade_date > buy_cutoff_day:
             statuses.append("basket_buy_window_closed_after_buy_cutoff")
             parts.append(
-                f"今天已超過整包買進截止日（{buy_cutoff_day.isoformat()}），整包買進迴圈不再開新買單。"
+                f"今天已超過整包買進截止日（{buy_cutoff_day.isoformat()}），整包買進迴圈不再開新買單；"
+                "AB 每日預選是獨立專案輸出，非買進日是否有新預選不會觸發永豐自動交易補買。"
             )
 
     if not parts:
@@ -1090,28 +1095,8 @@ def _today_ordering_conflict_summary_clean(
     buy_cutoff_day: date | None = None,
     last_trade_day: date | None = None,
 ) -> dict[str, str]:
-    selection = str(selection_source_status).strip()
-    if selection not in {
-        "same_day_a_preselect_loaded",
-        "same_day_a_preselect_loaded_pre_finalize",
-        "same_day_a_preselect_available_pending_materialization",
-    }:
-        return {}
-
-    if trade_date is not None and last_trade_day == trade_date:
-        return {
-            "today_ordering_conflict_status": "same_day_a_source_arrived_after_basket_buy_window_closed",
-            "today_ordering_conflict_note": (
-                f"同日 A 預選來源在 {trade_date.isoformat()} 才到位，但整包買進迴圈到了最後交易日已不再開新買單；這是上下游規則衝突。"
-            ),
-        }
-    if trade_date is not None and buy_cutoff_day is not None and trade_date > buy_cutoff_day:
-        return {
-            "today_ordering_conflict_status": "same_day_a_source_arrived_after_basket_buy_cutoff_closed",
-            "today_ordering_conflict_note": (
-                f"同日 A 預選來源在 {trade_date.isoformat()} 才到位，但整包買進迴圈在買進截止日（{buy_cutoff_day.isoformat()}）後已不再開新買單；這是上下游規則衝突。"
-            ),
-        }
+    # AB daily preselects are independent public outputs; the auto-trading
+    # system only uses the weekly buy-day materialized basket.
     return {}
 
 
@@ -1126,22 +1111,22 @@ def _today_ordering_conflict_resolution_summary_clean(
         return {}
 
     if status == "same_day_a_source_arrived_after_basket_buy_window_closed":
-        next_trade_day_text = next_trade_day.isoformat() if next_trade_day is not None else "下一個交易日"
         trade_date_text = trade_date.isoformat() if trade_date is not None else "今天"
         return {
-            "today_ordering_conflict_resolution_status": "requires_rule_alignment",
-            "today_ordering_conflict_resolution_action": "align_a_source_timing_or_basket_buy_window_rule",
+            "today_ordering_conflict_resolution_status": "strategy_scope_clarified",
+            "today_ordering_conflict_resolution_action": "no_materialization_required_for_non_buy_day_daily_preselect",
             "today_ordering_conflict_resolution_note": (
-                f"要避免重演 {trade_date_text} 這種情況，需對齊上下游規則：要嘛讓同日 A 預選在整包可買的交易日/買窗內先到，要嘛調整整包買窗規則，讓同日 A 主線可在符合風控的情況下建立買單。下次觀察點是 {next_trade_day_text}。"
+                f"{trade_date_text} 的 AB 每日預選屬於獨立專案輸出；永豐自動交易只在每週買進日依已訂版整包建立部位。"
+                "非買進日的每日預選只作呈現與觀察，不需要調整整包買窗，也不需要補出新的自動買單產物。"
             ),
         }
     if status == "same_day_a_source_arrived_after_basket_buy_cutoff_closed":
-        next_trade_day_text = next_trade_day.isoformat() if next_trade_day is not None else "下一個交易日"
         return {
-            "today_ordering_conflict_resolution_status": "requires_rule_alignment",
-            "today_ordering_conflict_resolution_action": "align_a_source_timing_or_basket_buy_window_rule",
+            "today_ordering_conflict_resolution_status": "strategy_scope_clarified",
+            "today_ordering_conflict_resolution_action": "no_materialization_required_for_non_buy_day_daily_preselect",
             "today_ordering_conflict_resolution_note": (
-                f"要避免同日 A 預選在買進截止後才到位，需對齊上下游規則：要嘛讓同日 A 預選更早到，要嘛調整整包買窗規則，讓同日 A 主線能在截止前完成物化。下次觀察點是 {next_trade_day_text}。"
+                "AB 每日預選屬於獨立專案輸出；永豐自動交易只在每週買進日依已訂版整包建立部位。"
+                "非買進日的每日預選只作呈現與觀察，不需要調整整包買窗，也不需要補出新的自動買單產物。"
             ),
         }
     return {}
@@ -1257,7 +1242,8 @@ def _selection_source_carry_forward_summary(
         "selection_source_carry_forward_status": "same_day_source_expires_after_trade_date",
         "selection_source_carry_forward_next_trade_day": next_trade_day.isoformat(),
         "selection_source_carry_forward_note": (
-            f"這份 A 預選來源遵守同日限定；{trade_date.isoformat()} 的 A 預選不能沿用到 {next_trade_day.isoformat()}，下次整包主線要等 {next_trade_day.isoformat()} 的同日 A 預選檔。"
+            f"{trade_date.isoformat()} 的 AB 每日預選只代表當日獨立輸出，不延用成下一個交易日的自動買單來源；"
+            "永豐自動交易下次選股 / 買進依下一個週一買進流程處理。"
         ),
     }
 
@@ -1300,17 +1286,17 @@ def _selection_materialization_summary(
 
     missing_text = ", ".join(missing_artifacts)
     if last_trade_day == trade_date or (buy_cutoff_day is not None and trade_date > buy_cutoff_day):
-        next_trade_day = _next_trade_day_after(trade_date)
         return {
             "selection_materialization_open": False,
-            "selection_materialization_status": "local_materialization_pending_wait_for_next_trade_day",
-            "selection_materialization_missing_artifacts": missing_text,
+            "selection_materialization_status": "daily_preselect_observed_no_auto_materialization_required",
+            "selection_materialization_missing_artifacts": "",
             "selection_materialization_note": (
-                f"同日 A 預選來源已到，但本地仍缺 {missing_text}；今天整包買窗已關，不能再補出今天要用的新買單產物。"
+                "AB 每日預選來源已到；它是獨立專案的每日輸出。"
+                "永豐自動交易本週只使用買進日已訂版的整包，非買進日不需要為同日預選補出新的買單產物。"
             ),
-            "selection_materialization_next_action": "wait_for_next_trade_day_same_day_a_then_materialize",
+            "selection_materialization_next_action": "no_materialization_required_for_non_buy_day_daily_preselect",
             "selection_materialization_next_action_note": (
-                f"等待 {next_trade_day.isoformat()} 的同日 A 預選檔到達後，先跑 prepare_week / finalize，補出 {missing_text}。"
+                "維持目前持倉、市值與風控追蹤；下次自動交易選股 / 買進依下一個週一買進流程處理。"
             ),
         }
 
@@ -1568,11 +1554,11 @@ WORKFLOW_CURRENT_STATE_LABELS = {
     "weekly_settlement_next_action_note": "週結算下一步說明",
     "today_ordering_status": "今日下單狀態",
     "today_ordering_note": "今日下單說明",
-    "today_ordering_conflict_status": "今日下單衝突狀態",
-    "today_ordering_conflict_note": "今日下單衝突說明",
-    "today_ordering_conflict_resolution_status": "衝突處理狀態",
-    "today_ordering_conflict_resolution_action": "衝突處理動作",
-    "today_ordering_conflict_resolution_note": "衝突處理說明",
+    "today_ordering_conflict_status": "策略範圍狀態",
+    "today_ordering_conflict_note": "策略範圍說明",
+    "today_ordering_conflict_resolution_status": "策略範圍處理狀態",
+    "today_ordering_conflict_resolution_action": "策略範圍處理動作",
+    "today_ordering_conflict_resolution_note": "策略範圍處理說明",
     "today_new_order_submission_open": "今日新單送出開啟",
     "today_new_order_submission_status": "今日新單送出狀態",
     "today_new_order_submission_note": "今日新單送出說明",
@@ -2513,7 +2499,8 @@ def _describe_workflow_action_clean(action: object) -> str:
         "run_prepare_week_and_finalize_from_same_day_a_source": "同日 A 預選來源已到位，先重跑 prepare_week / finalize 補出最新 sizing 產物。",
         "wait_for_next_trade_day_same_day_a_then_materialize": "今天 basket 買窗已過；等下一個交易日拿到新的同日 A 預選後，再跑 prepare_week / finalize。",
         "materialization_current_no_action_required": "本地整包產物已與同日 A 來源對齊；是否能送出新買單，改看買窗與風控。",
-        "align_a_source_timing_or_basket_buy_window_rule": "需要對齊 A 來源時間與整包買窗規則，否則同日 A 會持續晚於可買時間。",
+        "no_materialization_required_for_non_buy_day_daily_preselect": "AB 每日預選可獨立呈現；非買進日不需要展開成新的自動買單產物。",
+        "align_a_source_timing_or_basket_buy_window_rule": "AB 每日預選與永豐週一買進流程已拆開；非買進日不需調整買窗。",
     }
     if token.startswith("wait_until_last_trade_day:"):
         return f"等到本週最後交易日（{token.split(':', 1)[-1]}）後再繼續。"
@@ -5601,18 +5588,13 @@ def _build_daily_report(settings: Settings, trade_date: date) -> dict[str, objec
         weekly_settlement_action,
     ]
     if str(overview.get("today_new_order_submission_status", "")).strip() == "no_auto_new_buy_paths_remaining_today":
-        next_trade_day_text = str(overview.get("selection_source_carry_forward_next_trade_day", "")).strip()
         carry_forward_note = str(overview.get("selection_source_carry_forward_note", "")).strip()
         materialization_action_note = str(overview.get("selection_materialization_next_action_note", "")).strip()
         next_actions = [
-            "今天不會再有新的自動買單；剩餘的受保護下單與整包買進路徑都已關閉。",
-            (
-                f"在 {next_trade_day_text} 前，先處理「同日 A 來源」與整包買窗的規則衝突，並等待新的同日 A 檔。"
-                if next_trade_day_text
-                else "在下一個交易時段前，先處理「同日 A 來源」與整包買窗的規則衝突，並等待新的同日 A 檔。"
-            ),
-            materialization_action_note or "等下一份同日 A 來源在買窗內到達後，先重跑 prepare_week / finalize，再決定是否進入 auto-buy 邏輯。",
-            carry_forward_note or "目前這份同日 A 來源檔不會自動延用到下一個交易日。",
+            "今天不會再有新的自動買單；永豐自動交易目前只追蹤既有持倉、市值與風控。",
+            "AB 每日預選是獨立專案輸出；非買進日的預選只作網頁呈現與觀察，不代表自動交易要重新選股或補買。",
+            materialization_action_note or "維持目前持倉追蹤；下次自動交易選股 / 買進依下一個週一買進流程處理。",
+            carry_forward_note or "永豐自動交易下次選股 / 買進依下一個週一買進流程處理。",
             weekly_settlement_action,
         ]
     return {
