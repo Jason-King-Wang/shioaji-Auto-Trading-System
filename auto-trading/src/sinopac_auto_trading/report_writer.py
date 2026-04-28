@@ -1395,6 +1395,7 @@ def _render_page_shell(*, title: str, subtitle: str, body: str) -> str:
       background: var(--panel);
       border-radius: 18px;
       box-shadow: var(--shadow);
+      min-width: 0;
     }}
     .card {{
       padding: 16px;
@@ -1416,6 +1417,7 @@ def _render_page_shell(*, title: str, subtitle: str, body: str) -> str:
     .layout {{
       display: grid;
       gap: 18px;
+      min-width: 0;
     }}
     .page-nav {{
       display: flex;
@@ -1479,7 +1481,14 @@ def _render_page_shell(*, title: str, subtitle: str, body: str) -> str:
       white-space: nowrap;
     }}
     .table-wrap {{
+      width: 100%;
+      max-width: 100%;
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }}
+    .table-wrap table {{
+      width: max-content;
+      min-width: 100%;
     }}
     .sort-btn {{
       appearance: none;
@@ -1552,6 +1561,7 @@ def _render_page_shell(*, title: str, subtitle: str, body: str) -> str:
     }}
     .chart {{
       width: 100%;
+      max-width: 100%;
       border-radius: 14px;
       background: #fcfaf4;
       border: 1px solid #ebe3d2;
