@@ -5139,34 +5139,46 @@ def _build_chart_data(*, trade_date: date, overview: dict[str, object]) -> tuple
         x_labels = [row.get("snapshot_time", "")[-5:] or row.get("snapshot_time", "") for row in pnl_rows]
         comparison = {
             "x_labels": x_labels,
+            "kind": "returns",
+            "value_format": "percent",
+            "caption": "累積報酬率比較。這不是單股看盤 K 線，而是策略績效與市場基準的相對走勢。",
             "series": [
-                {"label": "Strategy", "color": "#244c5a", "values": [_as_float(row.get("strategy_return")) for row in pnl_rows]},
-                {"label": "TAIEX", "color": "#b85c38", "values": [_as_float(row.get("twii_return")) for row in pnl_rows]},
+                {"label": "策略", "color": "#244c5a", "values": [_as_float(row.get("strategy_return")) for row in pnl_rows]},
+                {"label": "加權", "color": "#b85c38", "values": [_as_float(row.get("twii_return")) for row in pnl_rows]},
                 {"label": "2330", "color": "#5a7d4d", "values": [_as_float(row.get("tsmc_return")) for row in pnl_rows]},
             ],
         }
         capital = {
             "x_labels": x_labels,
+            "kind": "allocation",
+            "value_format": "money",
+            "caption": "資金配置圖：看現金與已投入資金的占比變化，不是價格走勢圖。",
             "series": [
-                {"label": "Cash", "color": "#244c5a", "values": [max(_as_float(overview.get("hard_budget")) - _as_float(row.get("cash_used")), 0.0) for row in pnl_rows]},
-                {"label": "Deployed", "color": "#b85c38", "values": [_as_float(row.get("cash_used")) for row in pnl_rows]},
+                {"label": "現金", "color": "#244c5a", "values": [max(_as_float(overview.get("hard_budget")) - _as_float(row.get("cash_used")), 0.0) for row in pnl_rows]},
+                {"label": "已投入", "color": "#b85c38", "values": [_as_float(row.get("cash_used")) for row in pnl_rows]},
             ],
         }
         return comparison, capital
 
     comparison = {
         "x_labels": [trade_date.isoformat()],
+        "kind": "returns",
+        "value_format": "percent",
+        "caption": "累積報酬率比較。資料只有一個時間點時，改以基準比較條呈現。",
         "series": [
-            {"label": "Strategy", "color": "#244c5a", "values": [_as_float(overview.get("strategy_return"))]},
-            {"label": "TAIEX", "color": "#b85c38", "values": [0.0]},
+            {"label": "策略", "color": "#244c5a", "values": [_as_float(overview.get("strategy_return"))]},
+            {"label": "加權", "color": "#b85c38", "values": [0.0]},
             {"label": "2330", "color": "#5a7d4d", "values": [0.0]},
         ],
     }
     capital = {
         "x_labels": [trade_date.isoformat()],
+        "kind": "allocation",
+        "value_format": "money",
+        "caption": "資金配置圖：看目前現金與已投入資金的占比，不是價格走勢圖。",
         "series": [
-            {"label": "Cash", "color": "#244c5a", "values": [_as_float(overview.get("remaining_cash"))]},
-            {"label": "Deployed", "color": "#b85c38", "values": [_as_float(overview.get("used_cash"))]},
+            {"label": "現金", "color": "#244c5a", "values": [_as_float(overview.get("remaining_cash"))]},
+            {"label": "已投入", "color": "#b85c38", "values": [_as_float(overview.get("used_cash"))]},
         ],
     }
     return comparison, capital
@@ -5839,9 +5851,12 @@ def _build_weekly_summary(settings: Settings, trade_date: date) -> dict[str, obj
     ]
     comparison_chart = {
         "x_labels": [row["date"] for row in daily_rows],
+        "kind": "returns",
+        "value_format": "percent",
+        "caption": "週內累積報酬率比較，用來看策略相對加權與 2330 的表現。",
         "series": [
-            {"label": "Strategy", "color": "#244c5a", "values": [_as_float(row.get("strategy_return_value"), 0.0) for row in daily_rows]},
-            {"label": "TAIEX", "color": "#b85c38", "values": [_as_float(row.get("twii_return_value"), 0.0) for row in daily_rows]},
+            {"label": "策略", "color": "#244c5a", "values": [_as_float(row.get("strategy_return_value"), 0.0) for row in daily_rows]},
+            {"label": "加權", "color": "#b85c38", "values": [_as_float(row.get("twii_return_value"), 0.0) for row in daily_rows]},
             {"label": "2330", "color": "#5a7d4d", "values": [_as_float(row.get("tsmc_return_value"), 0.0) for row in daily_rows]},
         ],
     }

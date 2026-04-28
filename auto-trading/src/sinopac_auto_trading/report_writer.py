@@ -87,6 +87,20 @@ def _pct(value: Any) -> str:
         return str(value or "")
 
 
+def _compact_money(value: Any) -> str:
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return str(value or "")
+    sign = "-" if amount < 0 else ""
+    absolute = abs(amount)
+    if absolute >= 100_000_000:
+        return f"{sign}{absolute / 100_000_000:.2f}億"
+    if absolute >= 10_000:
+        return f"{sign}{absolute / 10_000:.1f}萬"
+    return f"{amount:,.0f}"
+
+
 def _text(value: Any) -> str:
     if value is None:
         return ""
@@ -98,6 +112,61 @@ def _text(value: Any) -> str:
 def _display_bool(value: Any) -> str:
     if isinstance(value, bool):
         return "是" if value else "否"
+    return _text(value)
+
+
+PERCENT_VALUE_KEYS = {
+    "strategy_return",
+    "twii_return",
+    "tsmc_return",
+    "strategy_excess_vs_twii",
+    "strategy_excess_vs_tsmc",
+    "unrealized_pnl_pct",
+    "basket_unrealized_pnl_pct",
+    "basket_loser_loss_ratio",
+    "loser_loss_ratio",
+}
+
+MONEY_VALUE_KEYS = {
+    "weekly_budget",
+    "hard_budget",
+    "used_cash",
+    "remaining_cash",
+    "current_equity",
+    "strategy_pnl_after_fee_tax",
+    "buy_avg_price",
+    "buy_total_cost",
+    "current_price",
+    "market_value",
+    "unrealized_pnl",
+    "estimated_exit_value_after_fee_tax",
+    "breakeven_sell_price",
+    "active_order_price",
+    "last_price",
+    "bid1",
+    "ask1",
+    "fill_price",
+    "conservative_sell_price",
+    "conservative_profit",
+    "basket_threshold",
+    "sell_order_price",
+    "actual_fill_avg_price",
+    "realized_pnl",
+    "basket_market_value",
+    "basket_unrealized_pnl",
+    "basket_conservative_profit",
+}
+
+
+def _format_cell_value(key: str, value: Any) -> str:
+    if value in ("", None):
+        return ""
+    if isinstance(value, bool):
+        return _display_bool(value)
+    if key in PERCENT_VALUE_KEYS:
+        return _pct(value)
+    if key in MONEY_VALUE_KEYS:
+        return _money(value)
     return _text(value)
 
 
@@ -776,7 +845,7 @@ def _table_rows_to_markdown(rows: list[dict[str, Any]], columns: list[tuple[str,
     header = "| " + " | ".join(label for _, label in columns) + " |"
     divider = "| " + " | ".join("---" for _ in columns) + " |"
     body = [
-        "| " + " | ".join(_text(row.get(key, "")).replace("\n", " ") for key, _ in columns) + " |"
+        "| " + " | ".join(_format_cell_value(key, row.get(key, "")).replace("\n", " ") for key, _ in columns) + " |"
         for row in rows
     ]
     return [header, divider, *body]
@@ -814,7 +883,7 @@ def _render_table_html(
     )
     body = []
     for row in rows:
-        cells = "".join(f"<td>{escape(_display_bool(row.get(key, '')))}</td>" for key, _ in columns)
+        cells = "".join(f"<td>{escape(_format_cell_value(key, row.get(key, '')))}</td>" for key, _ in columns)
         body.append(f"<tr>{cells}</tr>")
     return (
         f"<section class='panel' id='{escape(resolved_section_id)}'>"
@@ -843,9 +912,55 @@ def _render_list_panel(title: str, items: list[str], *, empty: str, section_id: 
     )
 
 
+def _chart_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _chart_value_format(chart: dict[str, Any], title: str) -> str:
+    explicit = _text(chart.get("value_format", "")).strip().lower()
+    if explicit in {"percent", "money", "number"}:
+        return explicit
+    if "報酬" in title or "vs" in title.lower():
+        return "percent"
+    if "資金" in title or "現金" in title:
+        return "money"
+    return "number"
+
+
+def _format_chart_value(value: float, value_format: str) -> str:
+    if value_format == "percent":
+        return f"{value * 100:.2f}%"
+    if value_format == "money":
+        return _compact_money(value)
+    return f"{value:,.2f}"
+
+
+def _normal_chart_series(chart: dict[str, Any]) -> list[dict[str, Any]]:
+    palette = ["#244c5a", "#b85c38", "#5a7d4d", "#9a4b6a"]
+    normalized: list[dict[str, Any]] = []
+    for index, line in enumerate(chart.get("series", [])):
+        if not isinstance(line, dict):
+            continue
+        values = [_chart_float(value) for value in line.get("values", [])]
+        clean_values = [value for value in values if value is not None]
+        if not clean_values:
+            continue
+        normalized.append(
+            {
+                "label": _text(line.get("label", f"Series {index + 1}")),
+                "color": _text(line.get("color", palette[index % len(palette)])) or palette[index % len(palette)],
+                "values": clean_values,
+            }
+        )
+    return normalized
+
+
 def _series_svg(chart: dict[str, Any], *, title: str, section_id: str | None = None) -> str:
     resolved_section_id = section_id or _slugify(title)
-    series = chart.get("series", [])
+    series = _normal_chart_series(chart)
     x_labels = chart.get("x_labels", [])
     if not series:
         return (
@@ -853,60 +968,178 @@ def _series_svg(chart: dict[str, Any], *, title: str, section_id: str | None = N
             "<p class='empty'>尚無圖表資料。</p></section>"
         )
 
-    width = 760
-    height = 240
-    padding = 28
-    values = [float(value) for line in series for value in line.get("values", [])]
-    if not values:
+    kind = _text(chart.get("kind", "")).strip().lower()
+    value_format = _chart_value_format(chart, title)
+    caption = _text(chart.get("caption", "")).strip()
+    point_count = max(len(x_labels), max(len(line.get("values", [])) for line in series))
+    last_label = _text(x_labels[-1] if x_labels else "").strip()
+
+    legend = []
+    for line in series:
+        last_value = line["values"][-1]
+        legend.append(
+            "<span>"
+            f"<i style='background:{escape(line['color'])}'></i>"
+            f"<b>{escape(line['label'])}</b>"
+            f"<em>{escape(_format_chart_value(last_value, value_format))}</em>"
+            "</span>"
+        )
+    caption_html = f"<p class='chart-caption'>{escape(caption)}</p>" if caption else ""
+
+    if point_count <= 1:
+        if kind == "allocation":
+            positive_values = [max(line["values"][-1], 0.0) for line in series]
+            total = sum(positive_values)
+            if total <= 0:
+                segments = "<span style='width:100%;background:#e6ddcb'></span>"
+            else:
+                segments = "".join(
+                    f"<span style='width:{value / total * 100:.2f}%;background:{escape(line['color'])}'></span>"
+                    for line, value in zip(series, positive_values)
+                    if value > 0
+                )
+            rows = "".join(
+                "<div class='allocation-row'>"
+                f"<span><i style='background:{escape(line['color'])}'></i>{escape(line['label'])}</span>"
+                f"<strong>{escape(_format_chart_value(line['values'][-1], value_format))}</strong>"
+                "</div>"
+                for line in series
+            )
+            total_html = _format_chart_value(total, value_format)
+            return (
+                f"<section class='panel chart-panel' id='{escape(resolved_section_id)}'><div class='panel-head'><h2>{escape(title)}</h2></div>"
+                f"{caption_html}<div class='allocation-total'><span>{escape(last_label or '目前')}</span><strong>{escape(total_html)}</strong></div>"
+                f"<div class='allocation-bar'>{segments}</div><div class='allocation-rows'>{rows}</div></section>"
+            )
+
+        max_abs = max(max(abs(line["values"][-1]) for line in series), 1e-9)
+        rows = []
+        for line in series:
+            value = line["values"][-1]
+            width_pct = min(abs(value) / max_abs * 46, 46)
+            left = 50 if value >= 0 else 50 - width_pct
+            rows.append(
+                "<div class='point-row'>"
+                f"<span class='point-name'><i style='background:{escape(line['color'])}'></i>{escape(line['label'])}</span>"
+                "<span class='point-track'><span class='point-zero'></span>"
+                f"<span class='point-bar' style='left:{left:.2f}%;width:{width_pct:.2f}%;background:{escape(line['color'])}'></span></span>"
+                f"<strong>{escape(_format_chart_value(value, value_format))}</strong>"
+                "</div>"
+            )
         return (
-            f"<section class='panel' id='{escape(resolved_section_id)}'><div class='panel-head'><h2>{escape(title)}</h2></div>"
-            "<p class='empty'>尚無圖表資料。</p></section>"
+            f"<section class='panel chart-panel' id='{escape(resolved_section_id)}'><div class='panel-head'><h2>{escape(title)}</h2></div>"
+            f"{caption_html}<div class='single-point-label'>{escape(last_label or '目前')}</div><div class='point-bars'>{''.join(rows)}</div></section>"
         )
 
-    min_value = min(values)
-    max_value = max(values)
-    span = max(max_value - min_value, 1e-9)
+    width = 860
+    height = 320
+    left = 66
+    right = 24
+    top = 24
+    bottom = 46
+    plot_width = width - left - right
+    plot_height = height - top - bottom
     point_count = max(len(x_labels), max(len(line.get("values", [])) for line in series))
     x_count = max(point_count - 1, 1)
 
-    def to_points(values_for_series: list[Any]) -> str:
-        points: list[str] = []
-        for index, raw in enumerate(values_for_series):
-            value = float(raw)
-            x = padding + ((width - padding * 2) * index / x_count)
-            y = height - padding - ((height - padding * 2) * (value - min_value) / span)
-            points.append(f"{x:.2f},{y:.2f}")
-        return " ".join(points)
+    def to_x(index: int) -> float:
+        return left + (plot_width * index / x_count)
 
-    grid = []
-    for step in range(5):
-        y = padding + (height - padding * 2) * step / 4
-        grid.append(f"<line x1='{padding}' y1='{y:.2f}' x2='{width - padding}' y2='{y:.2f}' class='grid' />")
-
-    polylines = []
-    legend = []
-    palette = ["#244c5a", "#b85c38", "#5a7d4d", "#9a4b6a"]
-    for index, line in enumerate(series):
-        color = line.get("color") or palette[index % len(palette)]
-        label = line.get("label", f"Series {index + 1}")
-        polylines.append(
-            f"<polyline points='{to_points(line.get('values', []))}' fill='none' stroke='{escape(color)}' stroke-width='3' />"
-        )
-        legend.append(f"<span><i style='background:{escape(color)}'></i>{escape(label)}</span>")
-
-    x_axis_labels = []
+    x_axis_labels: list[str] = []
     if x_labels:
         step = max(len(x_labels) // 4, 1)
         for index, label in enumerate(x_labels):
             if index % step != 0 and index != len(x_labels) - 1:
                 continue
-            x = padding + ((width - padding * 2) * index / x_count)
-            x_axis_labels.append(f"<text x='{x:.2f}' y='{height - 6}' class='axis'>{escape(label)}</text>")
+            x_axis_labels.append(f"<text x='{to_x(index):.2f}' y='{height - 12}' class='axis x-axis'>{escape(label)}</text>")
+
+    if kind == "allocation":
+        totals = []
+        for index in range(point_count):
+            totals.append(sum(max(line["values"][index], 0.0) if index < len(line["values"]) else 0.0 for line in series))
+        max_value = max(max(totals), 1e-9)
+
+        def to_y_alloc(value: float) -> float:
+            return top + plot_height - (plot_height * value / max_value)
+
+        grid = []
+        for step in range(5):
+            value = max_value * (4 - step) / 4
+            y = to_y_alloc(value)
+            grid.append(f"<line x1='{left}' y1='{y:.2f}' x2='{width - right}' y2='{y:.2f}' class='grid' />")
+            grid.append(f"<text x='{left - 10}' y='{y + 4:.2f}' class='axis y-axis'>{escape(_format_chart_value(value, value_format))}</text>")
+
+        previous = [0.0] * point_count
+        areas = []
+        for line in series:
+            current = [
+                previous[index] + (max(line["values"][index], 0.0) if index < len(line["values"]) else 0.0)
+                for index in range(point_count)
+            ]
+            top_points = [f"{to_x(index):.2f},{to_y_alloc(current[index]):.2f}" for index in range(point_count)]
+            bottom_points = [
+                f"{to_x(index):.2f},{to_y_alloc(previous[index]):.2f}"
+                for index in range(point_count - 1, -1, -1)
+            ]
+            line_points = " ".join(top_points)
+            area_points = " ".join(top_points + bottom_points)
+            areas.append(
+                f"<polygon points='{area_points}' fill='{escape(line['color'])}' opacity='0.26' />"
+                f"<polyline points='{line_points}' fill='none' stroke='{escape(line['color'])}' stroke-width='2.5' />"
+            )
+            previous = current
+
+        return (
+            f"<section class='panel chart-panel' id='{escape(resolved_section_id)}'><div class='panel-head'><h2>{escape(title)}</h2></div>"
+            f"{caption_html}<div class='legend'>{''.join(legend)}</div>"
+            f"<svg viewBox='0 0 {width} {height}' class='chart allocation-chart'>{''.join(grid)}{''.join(areas)}{''.join(x_axis_labels)}</svg>"
+            "</section>"
+        )
+
+    values = [value for line in series for value in line["values"]]
+    min_value = min(values)
+    max_value = max(values)
+    if value_format == "percent":
+        min_value = min(min_value, 0.0)
+        max_value = max(max_value, 0.0)
+    span = max(max_value - min_value, 1e-9)
+    padding = span * 0.12
+    min_value -= padding
+    max_value += padding
+    span = max(max_value - min_value, 1e-9)
+
+    def to_y(value: float) -> float:
+        return top + plot_height - (plot_height * (value - min_value) / span)
+
+    grid = []
+    for step in range(5):
+        value = max_value - span * step / 4
+        y = to_y(value)
+        grid.append(f"<line x1='{left}' y1='{y:.2f}' x2='{width - right}' y2='{y:.2f}' class='grid' />")
+        grid.append(f"<text x='{left - 10}' y='{y + 4:.2f}' class='axis y-axis'>{escape(_format_chart_value(value, value_format))}</text>")
+    if min_value < 0 < max_value:
+        zero_y = to_y(0.0)
+        grid.append(f"<line x1='{left}' y1='{zero_y:.2f}' x2='{width - right}' y2='{zero_y:.2f}' class='zero-line' />")
+
+    paths = []
+    for line in series:
+        commands = []
+        dots = []
+        for index, value in enumerate(line["values"]):
+            x = to_x(index)
+            y = to_y(value)
+            commands.append(("M" if index == 0 else "L") + f" {x:.2f} {y:.2f}")
+            dots.append(f"<circle cx='{x:.2f}' cy='{y:.2f}' r='3.5' fill='{escape(line['color'])}' />")
+        path_data = " ".join(commands)
+        paths.append(
+            f"<path d='{path_data}' fill='none' stroke='{escape(line['color'])}' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round' />"
+            + "".join(dots)
+        )
 
     return (
         f"<section class='panel chart-panel' id='{escape(resolved_section_id)}'><div class='panel-head'><h2>{escape(title)}</h2></div>"
-        f"<div class='legend'>{''.join(legend)}</div>"
-        f"<svg viewBox='0 0 {width} {height}' class='chart'>{''.join(grid)}{''.join(polylines)}{''.join(x_axis_labels)}</svg>"
+        f"{caption_html}<div class='legend'>{''.join(legend)}</div>"
+        f"<svg viewBox='0 0 {width} {height}' class='chart line-chart'>{''.join(grid)}{''.join(paths)}{''.join(x_axis_labels)}</svg>"
         "</section>"
     )
 
@@ -1288,12 +1521,30 @@ def _render_page_shell(*, title: str, subtitle: str, body: str) -> str:
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      padding: 6px 10px;
+      border: 1px solid #e7dfcf;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.62);
     }}
     .legend i {{
       width: 12px;
       height: 12px;
       border-radius: 999px;
       display: inline-block;
+    }}
+    .legend b {{
+      color: var(--ink);
+      font-weight: 700;
+    }}
+    .legend em {{
+      color: var(--muted);
+      font-style: normal;
+      font-variant-numeric: tabular-nums;
+    }}
+    .chart-caption {{
+      margin: -2px 0 14px;
+      color: var(--muted);
+      font-size: 13px;
     }}
     .chart {{
       width: 100%;
@@ -1305,10 +1556,109 @@ def _render_page_shell(*, title: str, subtitle: str, body: str) -> str:
       stroke: #e6ddcb;
       stroke-width: 1;
     }}
+    .zero-line {{
+      stroke: rgba(36, 76, 90, 0.36);
+      stroke-width: 1.2;
+      stroke-dasharray: 5 5;
+    }}
     .axis {{
       fill: var(--muted);
       font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }}
+    .x-axis {{
       text-anchor: middle;
+    }}
+    .y-axis {{
+      text-anchor: end;
+    }}
+    .single-point-label,
+    .allocation-total {{
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }}
+    .point-bars {{
+      display: grid;
+      gap: 12px;
+    }}
+    .point-row {{
+      display: grid;
+      grid-template-columns: minmax(96px, 150px) 1fr minmax(72px, auto);
+      align-items: center;
+      gap: 12px;
+    }}
+    .point-name,
+    .allocation-row span {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink);
+      font-weight: 700;
+    }}
+    .point-name i,
+    .allocation-row i {{
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }}
+    .point-track {{
+      position: relative;
+      height: 16px;
+      border-radius: 999px;
+      background: #eee6d7;
+      overflow: hidden;
+    }}
+    .point-zero {{
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      background: rgba(36, 76, 90, 0.34);
+    }}
+    .point-bar {{
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      border-radius: 999px;
+    }}
+    .point-row strong,
+    .allocation-row strong,
+    .allocation-total strong {{
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }}
+    .allocation-total {{
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }}
+    .allocation-bar {{
+      display: flex;
+      height: 22px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #eee6d7;
+      border: 1px solid #e4dac9;
+      margin-bottom: 14px;
+    }}
+    .allocation-bar span {{
+      display: block;
+      min-width: 2px;
+    }}
+    .allocation-rows {{
+      display: grid;
+      gap: 8px;
+    }}
+    .allocation-row {{
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      border-top: 1px solid #eee6d7;
+      padding-top: 8px;
     }}
     .empty {{
       color: var(--muted);
@@ -1912,13 +2262,13 @@ def _daily_html(report: dict[str, Any], *, title: str, subtitle: str) -> str:
             ("basket-summary", "整包分析", _render_basket_summary(report)),
             (
                 "benchmark-chart",
-                "策略 vs 加權 vs 2330",
-                _series_svg(report.get("comparison_chart", {}), title="策略 vs 加權 vs 2330", section_id="benchmark-chart"),
+                "累積報酬率：策略 vs 加權 vs 2330",
+                _series_svg(report.get("comparison_chart", {}), title="累積報酬率：策略 vs 加權 vs 2330", section_id="benchmark-chart"),
             ),
             (
                 "capital-chart",
-                "現金 vs 已投入資金",
-                _series_svg(report.get("capital_chart", {}), title="現金 vs 已投入資金", section_id="capital-chart"),
+                "資金配置：現金 vs 已投入資金",
+                _series_svg(report.get("capital_chart", {}), title="資金配置：現金 vs 已投入資金", section_id="capital-chart"),
             ),
             (
                 "events-log",
@@ -2248,8 +2598,8 @@ def _weekly_html(summary: dict[str, Any]) -> str:
     section_blocks.append(
         (
             "comparison-chart",
-            "策略 vs 加權 vs 2330",
-            _series_svg(summary.get("comparison_chart", {}), title="策略 vs 加權 vs 2330", section_id="comparison-chart"),
+            "累積報酬率：策略 vs 加權 vs 2330",
+            _series_svg(summary.get("comparison_chart", {}), title="累積報酬率：策略 vs 加權 vs 2330", section_id="comparison-chart"),
         )
     )
     body = [
