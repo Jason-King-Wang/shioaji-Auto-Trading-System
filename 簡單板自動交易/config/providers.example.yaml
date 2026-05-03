@@ -1,0 +1,15 @@
+providers:
+  active: ab_llm_preselect_json
+  ab_llm_preselect_json:
+    preselect_dir: ../data/ab_llm_preselect
+    daily_output_dir: ../data/ab_daily_output
+    use_a_preselect_as_final_list: true
+  manual_csv:
+    input_root: data/inputs
+  generic_csv:
+    preselect_path: examples/manual_preselect_example.csv
+    final_list_path: examples/manual_final_list_example.csv
+  stock_model_vault_export:
+    export_dir: ../StockModelVault/exports/auto_trading
+    preselect_filename: auto_trade_preselect.csv
+    final_list_filename: auto_trade_final_list.csv

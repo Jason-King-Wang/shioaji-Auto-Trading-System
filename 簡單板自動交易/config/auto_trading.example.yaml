@@ -1,0 +1,17 @@
+live_enabled: false
+weekly_budget: 0
+weekly_execution_enabled: false
+weekly_execution_week_id: ""
+overrun_tolerance: 50000
+quote_stale_seconds: 15
+test_qty_single_source: 1
+test_qty_dual_source: 2
+test_max_total_buy_amount: 50000
+test_max_single_stock_amount: 10000
+basket_auto_exit_enabled: false
+basket_recommendation_enabled: true
+allow_buy_after_first_trade_day: false
+a_preselect_confirmation_start_time: "10:00"
+enable_secondary_add: false
+secondary_add_budget_pct_min: 0.30
+secondary_add_budget_pct_max: 0.40

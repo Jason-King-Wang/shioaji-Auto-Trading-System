@@ -1,0 +1,6 @@
+{
+  "code": "DEMO",
+  "name": "Demo SinoPac Model",
+  "description": "A local demo model that outputs simple buy and sell order intents.",
+  "order_file": "orders.json"
+}

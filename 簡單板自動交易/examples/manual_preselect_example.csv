@@ -1,0 +1,4 @@
+stock_id,stock_name,source,user_priority,force_include,force_exclude,note
+2330,TSMC,A+B,1,true,,Core AI leader
+2317,Hon Hai,B,2,,,Assembly and AI server theme
+2454,MediaTek,manual,3,,,User supplied watchlist

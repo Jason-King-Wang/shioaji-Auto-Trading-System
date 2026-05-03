@@ -1,0 +1,8 @@
+{
+  "action": "buy",
+  "stock_id": "2330",
+  "budget": 100000,
+  "price": 982,
+  "lot": "odd",
+  "no_write": true
+}

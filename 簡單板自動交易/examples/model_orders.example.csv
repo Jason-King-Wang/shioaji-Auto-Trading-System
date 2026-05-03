@@ -1,0 +1,3 @@
+action,stock_id,price,budget,quantity,weight,lot,signal_id,note
+buy,2330,982,50000,,1,odd,csv-buy-2330,example model buy
+sell,2317,151,,100,1,odd,csv-sell-2317,example model sell

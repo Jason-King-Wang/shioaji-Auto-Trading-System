@@ -1,0 +1,25 @@
+{
+  "source_model": "my_model_v1",
+  "buy_budget": 100000,
+  "default_lot": "odd",
+  "orders": [
+    {
+      "action": "buy",
+      "stock_id": "2330",
+      "weight": 2,
+      "signal_id": "buy-2330"
+    },
+    {
+      "action": "buy",
+      "stock_id": "2317",
+      "weight": 1,
+      "signal_id": "buy-2317"
+    },
+    {
+      "action": "sell",
+      "stock_id": "2317",
+      "quantity": 100,
+      "signal_id": "sell-2317"
+    }
+  ]
+}
